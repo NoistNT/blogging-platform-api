@@ -1,6 +1,11 @@
 package posts
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/jackc/pgx/v4"
+)
 
 // Post is the struct of post
 type Post struct {
@@ -13,60 +18,56 @@ type Post struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-var posts = []Post{
-	{
-		ID:        1,
-		Title:     "Test Post",
-		Content:   "This is a test post",
-		Category:  "Test Category",
-		Tags:      []string{"Test Tag", "Test Tag 2"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	},
-	{
-		ID:        2,
-		Title:     "Test Post 2",
-		Content:   "This is a test post 2",
-		Category:  "Test Category 2",
-		Tags:      []string{"Test Tag 3", "Test Tag 4"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	},
-	{
-		ID:        3,
-		Title:     "Test Post 3",
-		Content:   "This is a test post 3",
-		Category:  "Test Category 3",
-		Tags:      []string{"Test Tag 5", "Test Tag 6"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	},
+// Create a post in the database
+func Create(conn *pgx.Conn, post Post) (Post, error) {
+	query := `
+	INSERT INTO posts (title, content, category, tags, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, content, category, tags, created_at, updated_at`
+	row := conn.QueryRow(context.Background(), query, post.Title, post.Content, post.Category, post.Tags, post.CreatedAt, post.UpdatedAt)
+	err := row.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.Tags, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		return Post{}, err
+	}
+	return post, nil
 }
 
-// FindAll returns a list of posts
-func FindAll() ([]Post, error) {
+// FindAll retrieves all posts from database
+func FindAll(conn *pgx.Conn) ([]Post, error) {
+	query := `SELECT * FROM posts`
+	rows, err := conn.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []Post
+	for rows.Next() {
+		var post Post
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.Tags, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
 	return posts, nil
 }
 
-// FindOne returns a single post by id
-func FindOne(id int) (Post, error) {
-	for _, post := range posts {
-		if post.ID == id {
-			return post, nil
-		}
+// FindOne retrieves a single post by its ID
+func FindOne(conn *pgx.Conn, id int) (Post, error) {
+	query := `SELECT * FROM posts WHERE id = $1`
+	row := conn.QueryRow(context.Background(), query, id)
+
+	var post Post
+	err := row.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.Tags, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		return Post{}, nil
 	}
-	return Post{}, nil
+	return post, nil
 }
 
-// Create creates a post
-func Create() (Post, error) {
-	return Post{
-		ID:        len(posts) + 1,
-		Title:     "My first post",
-		Content:   "Such a nice app",
-		Category:  "Social",
-		Tags:      []string{"social", "lifestyle"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}, nil
+// Remove removes a post from the database by its ID
+func Remove(conn *pgx.Conn, id int) error {
+	query := `DELETE FROM posts WHERE id = $1`
+	_, err := conn.Exec(context.Background(), query, id)
+	return err
 }
