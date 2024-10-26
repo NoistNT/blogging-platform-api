@@ -45,6 +45,9 @@ func main() {
 	router.GET("/posts/:id", func(c *gin.Context) {
 		handlers.GetPost(c, conn)
 	})
+	router.PATCH("/posts/:id", func(c *gin.Context) {
+		handlers.UpdatePost(c, conn)
+	})
 	router.DELETE("/posts/:id", func(c *gin.Context) {
 		handlers.RemovePost(c, conn)
 	})

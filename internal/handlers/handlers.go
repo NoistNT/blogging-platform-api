@@ -8,6 +8,7 @@ import (
 
 	"github.com/NoistNT/blogging-platform-api/internal/posts"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -17,6 +18,12 @@ func CreatePost(c *gin.Context, conn *pgx.Conn) {
 	if err := c.BindJSON(&post); err != nil {
 		log.Printf("Error binding JSON in CreatePost: %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	err := validator.New().Struct(post)
+	if err != nil {
+		log.Printf("Error validating post: %v", err)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	post.CreatedAt = time.Now()
@@ -63,6 +70,40 @@ func GetPost(c *gin.Context, conn *pgx.Conn) {
 		return
 	}
 	c.IndentedJSON(http.StatusOK, post)
+}
+
+// UpdatePost Handler
+func UpdatePost(c *gin.Context, conn *pgx.Conn) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		log.Printf("Error parsing post ID: %v", err)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
+		return
+	}
+
+	var post posts.Post
+	if err := c.BindJSON(&post); err != nil {
+		log.Printf("Error binding JSON")
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	err = validator.New().Struct(post)
+	if err != nil {
+		log.Printf("Error validating post: %v", err)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	post.ID = id
+	post.UpdatedAt = time.Now()
+
+	updatedPost, err := posts.Update(conn, post)
+	if err != nil {
+		log.Printf("Error updating post with ID %d: %v", id, err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update post"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, updatedPost)
 }
 
 // RemovePost Handler
