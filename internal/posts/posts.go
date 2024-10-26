@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -11,11 +12,16 @@ import (
 type Post struct {
 	ID        int       `json:"id"`
 	Title     string    `json:"title" validate:"required,min=1,max=255"`
-	Content   string    `json:"content" validate:"required,min=1,max=10000"`
+	Content   string    `json:"content" validate:"required,min=1"`
 	Category  string    `json:"category" validate:"required,min=1,max=100"`
 	Tags      []string  `json:"tags" validate:"required,min=1,max=3"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Validate the post
+func (p *Post) Validate() error {
+	return validator.New().Struct(p)
 }
 
 // Create a post in the database

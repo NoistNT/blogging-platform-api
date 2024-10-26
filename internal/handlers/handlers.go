@@ -8,7 +8,6 @@ import (
 
 	"github.com/NoistNT/blogging-platform-api/internal/posts"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -20,8 +19,7 @@ func CreatePost(c *gin.Context, conn *pgx.Conn) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	err := validator.New().Struct(post)
-	if err != nil {
+	if err := post.Validate(); err != nil {
 		log.Printf("Error validating post: %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,8 +86,7 @@ func UpdatePost(c *gin.Context, conn *pgx.Conn) {
 		return
 	}
 
-	err = validator.New().Struct(post)
-	if err != nil {
+	if err := post.Validate(); err != nil {
 		log.Printf("Error validating post: %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
